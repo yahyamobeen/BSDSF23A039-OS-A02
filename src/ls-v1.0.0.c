@@ -1,9 +1,10 @@
 /*
-* Programming Assignment 02: ls v1.1.0
-* Complete Long Listing Format
+* Programming Assignment 02: ls v1.3.0
+* Complete Long Listing Format with Column Display
 * Usage:
 *       $ ./bin/ls 
 *       $ ./bin/ls -l
+*       $ ./bin/ls -x
 *       $ ./bin/ls -l /home
 */
 #include <stdio.h>
@@ -18,8 +19,9 @@
 #include <grp.h>
 #include <time.h>
 #include <getopt.h>
-#include <termios.h>
 #include <sys/ioctl.h>
+
+extern int errno;
 
 // Display modes
 typedef enum {
@@ -32,13 +34,44 @@ typedef enum {
 display_mode_t display_mode = DISPLAY_SIMPLE;
 int terminal_width = 80;
 
-
 // File list structure
 typedef struct {
     char **names;
     int count;
     int max_name_len;
 } file_list_t;
+
+// Function prototypes
+void do_ls(const char *dir);
+void get_permissions(mode_t mode, char *str);
+void print_long_format(const char *dirname, const char *filename);
+file_list_t *file_list_create();
+void file_list_add(file_list_t *list, const char *name);
+void file_list_free(file_list_t *list);
+int get_terminal_width();
+void calculate_column_layout(file_list_t *list, int *cols, int *rows);
+void print_vertical_columns(file_list_t *list);
+void print_horizontal_columns(file_list_t *list);
+
+/**
+ * Get terminal width using termios
+ */
+int get_terminal_width() {
+    struct winsize w;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
+        return w.ws_col;
+    }
+    
+    // Fallback: environment variable
+    char *columns = getenv("COLUMNS");
+    if (columns != NULL) {
+        int width = atoi(columns);
+        if (width > 0) return width;
+    }
+    
+    // Final fallback
+    return 80;
+}
 
 /**
  * Create a new file list
@@ -50,51 +83,6 @@ file_list_t *file_list_create() {
     list->max_name_len = 0;
     return list;
 }
-
-
-
-
-/**
- * Print files in horizontal columns (across then down)
- */
-void print_horizontal_columns(file_list_t *list) {
-    if (list->count == 0) {
-        return;
-    }
-    
-    int col_width = list->max_name_len + 2; // Name + spacing
-    int max_cols = terminal_width / col_width;
-    if (max_cols == 0) max_cols = 1;
-    
-    int current_col = 0;
-    int current_width = 0;
-    
-    for (int i = 0; i < list->count; i++) {
-        int name_len = strlen(list->names[i]);
-        int needed_width = name_len + 2; // Name plus spacing
-        
-        // Check if we need to wrap to next line
-        if (current_col > 0 && (current_width + needed_width) > terminal_width) {
-            printf("\n");
-            current_col = 0;
-            current_width = 0;
-        }
-        
-        // Print the filename with padding
-        printf("%-*s", col_width, list->names[i]);
-        
-        current_col++;
-        current_width += col_width;
-    }
-    
-    // Add final newline if we printed anything
-    if (list->count > 0) {
-        printf("\n");
-    }
-}
-
-
-
 
 /**
  * Add filename to list
@@ -121,79 +109,6 @@ void file_list_free(file_list_t *list) {
     free(list->names);
     free(list);
 }
-
-
-
-
-
-
-// Global variables for display
-int terminal_width = 80;
-
-/**
- * Get terminal width using termios (alternative to ioctl)
- */
-int get_terminal_width() {
-    struct winsize w;
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
-        return w.ws_col;
-    }
-    return 80; // Fallback to 80 columns
-}
-extern int errno;
-
-// Global flag for long format
-int long_format = 0;
-
-// Function prototypes
-void do_ls(const char *dir);
-void get_permissions(mode_t mode, char *str);
-void print_long_format(const char *dirname, const char *filename);
-
-
-
-/**
- * Calculate column layout
- */
-void calculate_column_layout(file_list_t *list, int *cols, int *rows) {
-    if (list->count == 0) {
-        *cols = *rows = 0;
-        return;
-    }
-    
-    int col_width = list->max_name_len + 2; // Name + spacing
-    
-    // Calculate maximum possible columns
-    *cols = terminal_width / col_width;
-    if (*cols == 0) *cols = 1; // At least 1 column
-    
-    // Calculate rows needed
-    *rows = (list->count + *cols - 1) / *cols; // Ceiling division
-}
-
-/**
- * Print files in vertical columns (down then across)
- */
-void print_vertical_columns(file_list_t *list) {
-    int cols, rows;
-    calculate_column_layout(list, &cols, &rows);
-    
-    int col_width = list->max_name_len + 2;
-    
-    // Print row by row, column by column
-    for (int r = 0; r < rows; r++) {
-        for (int c = 0; c < cols; c++) {
-            int index = r + c * rows;
-            if (index < list->count) {
-                printf("%-*s", col_width, list->names[index]);
-            }
-        }
-        printf("\n");
-    }
-}
-
-
-
 
 /**
  * Convert file mode to permission string (e.g., "-rwxr-xr-x")
@@ -266,8 +181,84 @@ void print_long_format(const char *dirname, const char *filename) {
            filename);
 }
 
+/**
+ * Calculate column layout
+ */
+void calculate_column_layout(file_list_t *list, int *cols, int *rows) {
+    if (list->count == 0) {
+        *cols = *rows = 0;
+        return;
+    }
+    
+    int col_width = list->max_name_len + 2; // Name + spacing
+    
+    // Calculate maximum possible columns
+    *cols = terminal_width / col_width;
+    if (*cols == 0) *cols = 1; // At least 1 column
+    
+    // Calculate rows needed
+    *rows = (list->count + *cols - 1) / *cols; // Ceiling division
+}
 
+/**
+ * Print files in vertical columns (down then across)
+ */
+void print_vertical_columns(file_list_t *list) {
+    int cols, rows;
+    calculate_column_layout(list, &cols, &rows);
+    
+    int col_width = list->max_name_len + 2;
+    
+    // Print row by row, column by column
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            int index = r + c * rows;
+            if (index < list->count) {
+                printf("%-*s", col_width, list->names[index]);
+            }
+        }
+        printf("\n");
+    }
+}
 
+/**
+ * Print files in horizontal columns (across then down)
+ */
+void print_horizontal_columns(file_list_t *list) {
+    if (list->count == 0) {
+        return;
+    }
+    
+    int col_width = list->max_name_len + 2; // Name + spacing
+    int max_cols = terminal_width / col_width;
+    if (max_cols == 0) max_cols = 1;
+    
+    int current_col = 0;
+    int current_width = 0;
+    
+    for (int i = 0; i < list->count; i++) {
+        int name_len = strlen(list->names[i]);
+        int needed_width = name_len + 2; // Name plus spacing
+        
+        // Check if we need to wrap to next line
+        if (current_col > 0 && (current_width + needed_width) > terminal_width) {
+            printf("\n");
+            current_col = 0;
+            current_width = 0;
+        }
+        
+        // Print the filename with padding
+        printf("%-*s", col_width, list->names[i]);
+        
+        current_col++;
+        current_width += col_width;
+    }
+    
+    // Add final newline if we printed anything
+    if (list->count > 0) {
+        printf("\n");
+    }
+}
 
 /**
  * List directory contents
@@ -323,21 +314,16 @@ void do_ls(const char *dir) {
     closedir(dp);
 }
 
-
-
-
-
-
 /**
  * Main function
  */
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     int opt;
     
     // Initialize terminal width
     terminal_width = get_terminal_width();
     
-
     // Parse command-line options
     while ((opt = getopt(argc, argv, "lx")) != -1) {
         switch (opt) {
@@ -353,14 +339,6 @@ int main(int argc, char *argv[]) {
         }
     }
     
-    // Note: -l takes precedence over -x if both are specified
-    // This matches standard ls behavior
-    
-
-
-
-    
-    // Rest of main function remains the same...
     // Process directories
     if (optind == argc) {
         // No directory specified, use current directory
