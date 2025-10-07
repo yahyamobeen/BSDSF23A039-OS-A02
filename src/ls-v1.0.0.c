@@ -20,7 +20,14 @@
 #include <time.h>
 #include <getopt.h>
 #include <sys/ioctl.h>
-
+// ANSI color codes for file types
+#define COLOR_RESET   "\033[0m"
+#define COLOR_BLUE    "\033[1;34m"    // Directories
+#define COLOR_GREEN   "\033[1;32m"    // Executables  
+#define COLOR_RED     "\033[1;31m"    // Archives
+#define COLOR_MAGENTA "\033[1;35m"    // Symbolic links
+#define COLOR_CYAN    "\033[1;36m"    // Special files
+#define COLOR_YELLOW  "\033[1;33m"    // Regular files (default)
 extern int errno;
 
 // Display modes
