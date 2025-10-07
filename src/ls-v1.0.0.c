@@ -53,6 +53,16 @@ void calculate_column_layout(file_list_t *list, int *cols, int *rows);
 void print_vertical_columns(file_list_t *list);
 void print_horizontal_columns(file_list_t *list);
 
+
+/**
+ * Comparison function for qsort (alphabetical order)
+ */
+int compare_strings(const void *a, const void *b) {
+    const char *str1 = *(const char **)a;
+    const char *str2 = *(const char **)b;
+    return strcmp(str1, str2);
+}
+
 /**
  * Get terminal width using termios
  */
