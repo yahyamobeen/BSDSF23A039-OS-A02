@@ -97,6 +97,29 @@ void print_long_format(const char *dirname, const char *filename) {
            time_str,
            filename);
 }
+int main(int argc, char *argv[]) {
+    int opt;
+    int long_format = 0;
+    char *dirname = ".";
+    
+    // Parse command-line options
+    while ((opt = getopt(argc, argv, "l")) != -1) {
+        switch (opt) {
+            case 'l':
+                long_format = 1;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-l] [directory]\n", argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
+    
+    // Get directory name if provided
+    if (optind < argc) {
+        dirname = argv[optind];
+    }
+    
+    // ... rest of your existing code ...
 int main(int argc, char const *argv[])
 {
     if (argc == 1)
