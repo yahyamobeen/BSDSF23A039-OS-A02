@@ -51,6 +51,51 @@ file_list_t *file_list_create() {
     return list;
 }
 
+
+
+
+/**
+ * Print files in horizontal columns (across then down)
+ */
+void print_horizontal_columns(file_list_t *list) {
+    if (list->count == 0) {
+        return;
+    }
+    
+    int col_width = list->max_name_len + 2; // Name + spacing
+    int max_cols = terminal_width / col_width;
+    if (max_cols == 0) max_cols = 1;
+    
+    int current_col = 0;
+    int current_width = 0;
+    
+    for (int i = 0; i < list->count; i++) {
+        int name_len = strlen(list->names[i]);
+        int needed_width = name_len + 2; // Name plus spacing
+        
+        // Check if we need to wrap to next line
+        if (current_col > 0 && (current_width + needed_width) > terminal_width) {
+            printf("\n");
+            current_col = 0;
+            current_width = 0;
+        }
+        
+        // Print the filename with padding
+        printf("%-*s", col_width, list->names[i]);
+        
+        current_col++;
+        current_width += col_width;
+    }
+    
+    // Add final newline if we printed anything
+    if (list->count > 0) {
+        printf("\n");
+    }
+}
+
+
+
+
 /**
  * Add filename to list
  */
