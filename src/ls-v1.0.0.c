@@ -493,7 +493,7 @@ void do_ls(const char *dir) {
             default:
                 print_vertical_columns(file_list, dir); // Fallback
                 break;
-        }
+       }
     }
     
     file_list_free(file_list);
@@ -504,11 +504,6 @@ void do_ls(const char *dir) {
     
     closedir(dp);
 }
-
-/**
- * Main function
- */
-
 
 
 
@@ -526,6 +521,71 @@ int terminal_width = 80;
 int recursive_flag = 0;  // Add recursive flag
 
 // Update main function option parsing
+
+/**
+ * Main function
+ */
+int main(int argc, char *argv[]) {
+    int opt;
+    
+    // Initialize terminal width
+    terminal_width = get_terminal_width();
+    
+    // Parse command-line options
+    while ((opt = getopt(argc, argv, "lxR")) != -1) {
+        switch (opt) {
+            case 'l':
+                display_mode = DISPLAY_LONG;
+                break;
+            case 'x':
+                display_mode = DISPLAY_HORIZONTAL;
+                break;
+            case 'R':
+                recursive_flag = 1;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-l] [-x] [-R] [directory...]\n", argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
+    
+    // Process directories
+    if (optind == argc) {
+        // No directory specified, use current directory
+        if (recursive_flag) {
+            do_ls_recursive(".");
+        } else {
+            do_ls(".");
+        }
+    } else {
+        // Process each specified directory
+        for (int i = optind; i < argc; i++) {
+            if (recursive_flag) {
+                do_ls_recursive(argv[i]);
+            } else {
+                if (argc - optind > 1) {
+                    printf("%s:\n", argv[i]);
+                }
+                do_ls(argv[i]);
+                if (i < argc - 1) {
+                    printf("\n");
+                }
+            }
+        }
+    }
+    
+    return 0;
+}
+
+
+
+
+
+
+/*
+main function 
+
+
 
 int main(int argc, char *argv[]) {
     int opt;
@@ -577,3 +637,4 @@ int main(int argc, char *argv[]) {
     
     return 0;
 }
+*/
