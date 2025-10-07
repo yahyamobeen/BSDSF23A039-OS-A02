@@ -371,13 +371,8 @@ void do_ls(const char *dir) {
         if (entry->d_name[0] == '.')
             continue;
         
-        if (display_mode == DISPLAY_LONG) {
-            // For long format, we need to collect and sort first
-            file_list_add(file_list, entry->d_name);
-        } else {
-            // Add to list for column display
-            file_list_add(file_list, entry->d_name);
-        }
+        // Always add to list (we'll handle display mode later)
+        file_list_add(file_list, entry->d_name);
     }
     
     // Sort the file list alphabetically
@@ -395,13 +390,13 @@ void do_ls(const char *dir) {
         // Use column display for non-long formats
         switch (display_mode) {
             case DISPLAY_SIMPLE:
-                print_vertical_columns(file_list);
+                print_vertical_columns(file_list, dir);
                 break;
             case DISPLAY_HORIZONTAL:
-                print_horizontal_columns(file_list);
+                print_horizontal_columns(file_list, dir);
                 break;
             default:
-                print_vertical_columns(file_list); // Fallback
+                print_vertical_columns(file_list, dir); // Fallback
                 break;
         }
     }
@@ -414,8 +409,6 @@ void do_ls(const char *dir) {
     
     closedir(dp);
 }
-
-
 
 
 
