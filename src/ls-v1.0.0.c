@@ -416,15 +416,33 @@ void do_ls(const char *dir) {
 /**
  * Main function
  */
-int main(int argc, char *argv[])
-{
+
+
+
+
+
+// Update the display_mode enum
+typedef enum {
+    DISPLAY_SIMPLE,     // Default column display
+    DISPLAY_LONG,       // Long listing format (-l)
+    DISPLAY_HORIZONTAL  // Horizontal display (-x)
+} display_mode_t;
+
+// Global variables
+display_mode_t display_mode = DISPLAY_SIMPLE;
+int terminal_width = 80;
+int recursive_flag = 0;  // Add recursive flag
+
+// Update main function option parsing
+
+int main(int argc, char *argv[]) {
     int opt;
     
     // Initialize terminal width
     terminal_width = get_terminal_width();
     
-    // Parse command-line options
-    while ((opt = getopt(argc, argv, "lx")) != -1) {
+    // Parse command-line options - ADD 'R' to getopt string
+    while ((opt = getopt(argc, argv, "lxR")) != -1) {
         switch (opt) {
             case 'l':
                 display_mode = DISPLAY_LONG;
@@ -432,11 +450,21 @@ int main(int argc, char *argv[])
             case 'x':
                 display_mode = DISPLAY_HORIZONTAL;
                 break;
+            case 'R':
+                recursive_flag = 1;
+                break;
             default:
-                fprintf(stderr, "Usage: %s [-l] [-x] [directory...]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-l] [-x] [-R] [directory...]\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
+    
+    // Rest of main function remains the same...
+
+
+
+
+
     
     // Process directories
     if (optind == argc) {
