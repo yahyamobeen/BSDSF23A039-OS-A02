@@ -387,7 +387,7 @@ void do_ls(const char *dir) {
     if (display_mode == DISPLAY_LONG) {
         // Print each file in long format from sorted list
         for (int i = 0; i < file_list->count; i++) {
-            print_long_format(dir, file_list->count[i]);
+            print_long_format(dir, file_list->names[i]);
         }
     } else if (file_list->count > 0) {
         // Use column display for non-long formats

@@ -259,3 +259,92 @@ int compare_strings(const void *a, const void *b) {
     const char *str2 = *(const char **)b;  // Cast and dereference  
     return strcmp(str1, str2);             // Compare strings
 }
+
+
+## Feature-6: Colorized Output (v1.5.0)
+
+### Q1: How do ANSI escape codes work for terminal colors?
+
+**ANSI Escape Codes Mechanism:**
+ANSI escape codes are special character sequences that control terminal formatting, including colors.
+
+**Basic Structure:**
+- **Escape character**: `\033` (octal) or `\x1b` (hex) - signals the start of escape sequence
+- **Control Sequence Introducer**: `[` - begins the formatting command
+- **Parameters**: Color codes and styles separated by semicolons
+- **Command character**: `m` - indicates graphics mode (colors/formatting)
+
+**Color Code Examples:**
+```c
+"\033[0m"    // Reset all attributes
+"\033[1;32m" // Bold (1) + Green text (32)
+"\033[1;34m" // Bold (1) + Blue text (34)  
+
+
+
+Specific Code for Green Text:
+c
+
+printf("\033[1;32mThis text is green\033[0m");
+
+    \033[1;32m: Start bold green text
+
+    This text is green: The actual text to display
+
+    \033[0m: Reset to default terminal colors
+
+Color Code Reference:
+
+    30-37: Standard colors (black, red, green, yellow, blue, magenta, cyan, white)
+
+    90-97: Bright colors
+
+    1: Bold/bright attribute
+
+    0: Reset all attributes
+
+Q2: Checking executable permission bits in st_mode
+
+Executable Permission Bits:
+The st_mode field contains permission bits that determine who can execute a file:
+
+Bit Masks for Execute Permissions:
+c
+
+S_IXUSR  // Owner execute permission (0000100)
+S_IXGRP  // Group execute permission (0000010)  
+S_IXOTH  // Others execute permission (0000001)
+
+Checking if a File is Executable:
+c
+
+// Check if ANY execute permission is set
+if (st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) {
+    // File is executable by someone
+}
+
+// Check specific permissions:
+if (st_mode & S_IXUSR) {
+    // Executable by owner (user)
+}
+
+if (st_mode & S_IXGRP) {
+    // Executable by group  
+}
+
+if (st_mode & S_IXOTH) {
+    // Executable by others (world)
+}
+
+Complete Permission Bit Reference:
+
+    Owner: S_IRUSR (read), S_IWUSR (write), S_IXUSR (execute)
+
+    Group: S_IRGRP, S_IWGRP, S_IXGRP
+
+    Others: S_IROTH, S_IWOTH, S_IXOTH
+
+Why We Check Any Execute Bit:
+In our implementation, we color any file green if ANY execute permission is set, regardless of who can execute it. This matches the behavior of most modern ls implementations with color support.
+
+
