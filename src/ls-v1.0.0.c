@@ -1,11 +1,10 @@
 /*
-* Programming Assignment 02: lsv1.0.0
-* This is the source file of version 1.0.0
-* Read the write-up of the assignment to add the features to this base version
+* Programming Assignment 02: ls v1.1.0
+* Complete Long Listing Format
 * Usage:
-*       $ lsv1.0.0 
-*       % lsv1.0.0  /home
-*       $ lsv1.0.0  /home/kali/   /etc/
+*       $ ./bin/ls 
+*       $ ./bin/ls -l
+*       $ ./bin/ls -l /home
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,20 +13,22 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <dirent.h>
-#include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
 #include <getopt.h>
+
 extern int errno;
 
+// Global flag for long format
+int long_format = 0;
+
+// Function prototypes
 void do_ls(const char *dir);
+void get_permissions(mode_t mode, char *str);
+void print_long_format(const char *dirname, const char *filename);
+
 /**
  * Convert file mode to permission string (e.g., "-rwxr-xr-x")
  */
@@ -58,6 +59,7 @@ void get_permissions(mode_t mode, char *str) {
     
     str[10] = '\0';
 }
+
 /**
  * Print file information in long listing format
  */
@@ -97,62 +99,35 @@ void print_long_format(const char *dirname, const char *filename) {
            time_str,
            filename);
 }
-int main(int argc, char *argv[]) {
-    int opt;
-    int long_format = 0;
-    char *dirname = ".";
-    
-    // Parse command-line options
-    while ((opt = getopt(argc, argv, "l")) != -1) {
-        switch (opt) {
-            case 'l':
-                long_format = 1;
-                break;
-            default:
-                fprintf(stderr, "Usage: %s [-l] [directory]\n", argv[0]);
-                exit(EXIT_FAILURE);
-        }
-    }
-    
-    // Get directory name if provided
-    if (optind < argc) {
-        dirname = argv[optind];
-    }
-    
-    // ... rest of your existing code ...
-int main(int argc, char const *argv[])
-{
-    if (argc == 1)
-    {
-        do_ls(".");
-    }
-    else
-    {
-        for (int i = 1; i < argc; i++)
-        {
-            printf("Directory listing of %s : \n", argv[i]);
-            do_ls(argv[i]);
-	    puts("");
-        }
-    }
-    return 0;
-}
 
+/**
+ * List directory contents
+ */
 void do_ls(const char *dir)
 {
     struct dirent *entry;
     DIR *dp = opendir(dir);
+    
     if (dp == NULL)
     {
-        fprintf(stderr, "Cannot open directory : %s\n", dir);
+        fprintf(stderr, "Cannot open directory: %s\n", dir);
         return;
     }
+    
     errno = 0;
     while ((entry = readdir(dp)) != NULL)
     {
+        // Skip hidden files
         if (entry->d_name[0] == '.')
             continue;
-        printf("%s\n", entry->d_name);
+        
+        if (long_format) {
+            // Print in long format
+            print_long_format(dir, entry->d_name);
+        } else {
+            // Print simple format
+            printf("%s\n", entry->d_name);
+        }
     }
 
     if (errno != 0)
@@ -161,4 +136,43 @@ void do_ls(const char *dir)
     }
 
     closedir(dp);
+}
+
+/**
+ * Main function
+ */
+int main(int argc, char *argv[])
+{
+    int opt;
+    
+    // Parse command-line options
+    while ((opt = getopt(argc, argv, "l")) != -1) {
+        switch (opt) {
+            case 'l':
+                long_format = 1;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-l] [directory...]\n", argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
+    
+    // Process directories
+    if (optind == argc) {
+        // No directory specified, use current directory
+        do_ls(".");
+    } else {
+        // Process each specified directory
+        for (int i = optind; i < argc; i++) {
+            if (argc - optind > 1) {
+                printf("Directory listing of %s:\n", argv[i]);
+            }
+            do_ls(argv[i]);
+            if (i < argc - 1) {
+                puts("");
+            }
+        }
+    }
+    
+    return 0;
 }
