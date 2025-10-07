@@ -58,6 +58,45 @@ void get_permissions(mode_t mode, char *str) {
     
     str[10] = '\0';
 }
+/**
+ * Print file information in long listing format
+ */
+void print_long_format(const char *dirname, const char *filename) {
+    struct stat file_stat;
+    char path[1024];
+    char perms[11];
+    char time_str[80];
+    
+    // Build full path
+    snprintf(path, sizeof(path), "%s/%s", dirname, filename);
+    
+    // Get file stats using lstat (doesn't follow symlinks)
+    if (lstat(path, &file_stat) == -1) {
+        perror("lstat");
+        return;
+    }
+    
+    // Get permission string
+    get_permissions(file_stat.st_mode, perms);
+    
+    // Get username and group name
+    struct passwd *pwd = getpwuid(file_stat.st_uid);
+    struct group *grp = getgrgid(file_stat.st_gid);
+    
+    // Format time (last modification time)
+    struct tm *tm_info = localtime(&file_stat.st_mtime);
+    strftime(time_str, sizeof(time_str), "%b %d %H:%M", tm_info);
+    
+    // Print in ls -l format with proper alignment
+    printf("%s %3ld %-8s %-8s %8ld %s %s\n",
+           perms,
+           (long)file_stat.st_nlink,
+           pwd ? pwd->pw_name : "unknown",
+           grp ? grp->gr_name : "unknown",
+           (long)file_stat.st_size,
+           time_str,
+           filename);
+}
 int main(int argc, char const *argv[])
 {
     if (argc == 1)
