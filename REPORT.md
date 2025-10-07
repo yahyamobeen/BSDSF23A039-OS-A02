@@ -348,3 +348,72 @@ Why We Check Any Execute Bit:
 In our implementation, we color any file green if ANY execute permission is set, regardless of who can execute it. This matches the behavior of most modern ls implementations with color support.
 
 
+## Feature-7: Recursive Listing (v1.6.0)
+
+### Q1: What is a "base case" in recursive functions?
+
+**Base Case Definition:**
+A base case is the condition that stops the recursion from continuing indefinitely. It's the simplest scenario that can be solved directly without further recursive calls.
+
+**In our recursive ls implementation, the base case is:**
+
+1. **No Subdirectories**: When a directory contains no more subdirectories (excluding . and ..)
+2. **Directory Exhaustion**: When all entries in the current directory have been processed
+3. **Error Condition**: When a directory cannot be opened (permission denied, doesn't exist)
+
+**How it prevents infinite recursion:**
+- The function only makes recursive calls for actual subdirectories
+- It skips the . and .. entries which would cause circular recursion
+- Each recursive call processes a different directory path
+- The recursion depth is limited by the actual directory tree structure
+
+### Q2: Why construct full paths for recursive calls?
+
+**Essential for Correct Recursion:**
+
+1. **Absolute Context**: Each recursive call needs the complete path to the subdirectory
+2. **stat() Requirements**: The lstat() system call requires full paths to access file metadata
+3. **Directory Navigation**: opendir() needs the full path to open directories
+4. **Path Preservation**: Maintains the correct directory hierarchy in output
+
+**What happens with just "subdir":**
+If we call `do_ls("subdir")` from within `do_ls("parent_dir")`:
+
+```c
+// WRONG - would look for "subdir" in current working directory
+do_ls("subdir");
+
+// CORRECT - looks for "parent_dir/subdir" 
+do_ls("parent_dir/subdir");
+
+
+
+
+Consequences of incorrect path construction:
+
+    Wrong Directory: Would open "subdir" in current directory instead of the parent
+
+    Missing Files: Would list wrong directory contents
+
+    Infinite Loops: Might re-process already visited directories
+
+    Permission Errors: Could try to access non-existent paths
+
+Our Implementation:
+c
+
+char subdir_path[1024];
+snprintf(subdir_path, sizeof(subdir_path), "%s/%s", current_dir, subdir_name);
+do_ls_recursive(subdir_path);  // Correct full path
+
+This ensures each recursive call explores the actual subdirectory within the current directory's context.
+text
+
+
+- ✅ Feature 1: Project Setup
+- ✅ Feature 2: Long Listing Format (-l)
+- ✅ Feature 3: Vertical Column Display  
+- ✅ Feature 4: Horizontal Column Display (-x)
+- ✅ Feature 5: Alphabetical Sort
+- ✅ Feature 6: Colorized Output
+- ✅ Feature 7: Recursive Listing (-R)
