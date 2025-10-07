@@ -270,6 +270,11 @@ void print_horizontal_columns(file_list_t *list) {
     }
 }
 
+
+
+
+
+
 /**
  * List directory contents
  */
@@ -292,16 +297,27 @@ void do_ls(const char *dir) {
             continue;
         
         if (display_mode == DISPLAY_LONG) {
-            // Print in long format immediately
-            print_long_format(dir, entry->d_name);
+            // For long format, we need to collect and sort first
+            file_list_add(file_list, entry->d_name);
         } else {
             // Add to list for column display
             file_list_add(file_list, entry->d_name);
         }
     }
     
-    // Handle different display modes for non-long format
-    if (display_mode != DISPLAY_LONG && file_list->count > 0) {
+    // Sort the file list alphabetically
+    if (file_list->count > 0) {
+        qsort(file_list->names, file_list->count, sizeof(char *), compare_strings);
+    }
+    
+    // Handle different display modes
+    if (display_mode == DISPLAY_LONG) {
+        // Print each file in long format from sorted list
+        for (int i = 0; i < file_list->count; i++) {
+            print_long_format(dir, file_list->names[i]);
+        }
+    } else if (file_list->count > 0) {
+        // Use column display for non-long formats
         switch (display_mode) {
             case DISPLAY_SIMPLE:
                 print_vertical_columns(file_list);
@@ -323,6 +339,11 @@ void do_ls(const char *dir) {
     
     closedir(dp);
 }
+
+
+
+
+
 
 /**
  * Main function
