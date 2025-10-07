@@ -1,26 +1,41 @@
 # Makefile for ls utility
 
+# Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -g
-TARGET = bin/ls
-SRC = src/ls-v1.0.0.c
-OBJ = obj/ls-v1.0.0.o
+CFLAGS = -Wall -Wextra -std=gnu99
+SRCDIR = src
+OBJDIR = obj
+BINDIR = bin
+
+# Source files
+SOURCES = $(SRCDIR)/ls-v1.0.0.c
+OBJECTS = $(OBJDIR)/ls-v1.0.0.o
+TARGET = $(BINDIR)/ls
 
 # Default target
 all: $(TARGET)
 
-# Create directories if they don't exist
-$(TARGET): $(OBJ)
-	@mkdir -p bin
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ)
+# Create binary
+$(TARGET): $(OBJECTS) | $(BINDIR)
+	$(CC) $(OBJECTS) -o $(TARGET)
 
-$(OBJ): $(SRC)
-	@mkdir -p obj
-	$(CC) $(CFLAGS) -c $(SRC) -o $(OBJ)
+# Create object files
+$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Create directories
+$(BINDIR):
+	mkdir -p $(BINDIR)
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
 # Clean build artifacts
 clean:
-	rm -rf bin/* obj/*
+	rm -rf $(OBJDIR)/* $(BINDIR)/*
 
-# Phony targets
-.PHONY: all clean
+# Install (optional)
+install: all
+	cp $(TARGET) /usr/local/bin/
+
+.PHONY: all clean install
