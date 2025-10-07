@@ -209,50 +209,66 @@ void print_long_format(const char *dirname, const char *filename) {
            filename);
 }
 
+
+
+
 /**
  * List directory contents
  */
-void do_ls(const char *dir)
-{
+void do_ls(const char *dir) {
     struct dirent *entry;
     DIR *dp = opendir(dir);
     
-    if (dp == NULL)
-    {
+    if (dp == NULL) {
         fprintf(stderr, "Cannot open directory: %s\n", dir);
         return;
     }
     
+    file_list_t *file_list = file_list_create();
     errno = 0;
-    while ((entry = readdir(dp)) != NULL)
-    {
+    
+    // Read all directory entries
+    while ((entry = readdir(dp)) != NULL) {
         // Skip hidden files
         if (entry->d_name[0] == '.')
             continue;
         
         if (long_format) {
-            // Print in long format
+            // Print in long format immediately
             print_long_format(dir, entry->d_name);
         } else {
-            // Print simple format
-            printf("%s\n", entry->d_name);
+            // Add to list for column display
+            file_list_add(file_list, entry->d_name);
         }
     }
-
-    if (errno != 0)
-    {
+    
+    // Print in column format if not long format
+    if (!long_format && file_list->count > 0) {
+        print_vertical_columns(file_list);
+    }
+    
+    file_list_free(file_list);
+    
+    if (errno != 0) {
         perror("readdir failed");
     }
-
+    
     closedir(dp);
 }
+
+
+
+
+
 
 /**
  * Main function
  */
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     int opt;
+    
+    // Initialize terminal width
+    terminal_width = get_terminal_width();
     
     // Parse command-line options
     while ((opt = getopt(argc, argv, "l")) != -1) {
@@ -266,6 +282,7 @@ int main(int argc, char *argv[])
         }
     }
     
+    // Rest of main function remains the same...
     // Process directories
     if (optind == argc) {
         // No directory specified, use current directory
@@ -274,11 +291,11 @@ int main(int argc, char *argv[])
         // Process each specified directory
         for (int i = optind; i < argc; i++) {
             if (argc - optind > 1) {
-                printf("Directory listing of %s:\n", argv[i]);
+                printf("%s:\n", argv[i]);
             }
             do_ls(argv[i]);
             if (i < argc - 1) {
-                puts("");
+                printf("\n");
             }
         }
     }
