@@ -73,3 +73,49 @@ if (S_ISSOCK(st_mode))  // Socket
 
 How these macros work internally:
 
+## Feature-3: Column Display (v1.2.0)
+
+### Q1: Explain the general logic for printing items in "down then across" format
+
+The "down then across" (vertical) column format requires a two-dimensional printing approach:
+
+**Logic:**
+1. **Read All Items First**: We must know all filenames and the longest filename length before printing
+2. **Calculate Layout**: 
+   - Get terminal width
+   - Calculate column width: `max_filename_length + spacing`
+   - Calculate columns: `terminal_width / column_width`
+   - Calculate rows: `ceil(total_files / columns)`
+3. **Print by Rows**: 
+   - Iterate through rows (0 to rows-1)
+   - For each row, iterate through columns (0 to columns-1)
+   - Calculate index: `index = current_row + current_column * total_rows`
+   - Print item at calculated index with proper padding
+
+**Why simple loop doesn't work:**
+A simple loop would print:
+file1 file2 file3
+file4 file5 file6
+
+But we need:
+
+file1 file4 file7
+file2 file5 file8
+file3 file6 file9
+
+
+### Q2: Purpose of terminal width detection and limitations of fixed width
+
+**Purpose:**
+- **Dynamic Adaptation**: Adjust column layout based on actual terminal size
+- **Optimal Space Usage**: Maximize information display without wrapping
+- **User Experience**: Provide clean, readable output regardless of window size
+
+**Limitations of Fixed Width (80 columns):**
+1. **Wasted Space**: On wide terminals, only uses partial screen width
+2. **Poor Readability**: On narrow terminals, columns may get truncated
+3. **Inflexible**: Doesn't adapt to different display environments
+4. **Modern Incompatibility**: Many terminals are much wider than 80 columns today
+
+**Our Implementation:**
+We use `ioctl(TIOCGWINSZ)` to get terminal dimensions, falling back to 80 columns if unavailable.

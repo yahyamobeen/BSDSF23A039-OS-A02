@@ -21,6 +21,18 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 
+// Display modes
+typedef enum {
+    DISPLAY_SIMPLE,     // Default column display
+    DISPLAY_LONG,       // Long listing format (-l)
+    DISPLAY_HORIZONTAL  // Horizontal display (-x)
+} display_mode_t;
+
+// Global variables
+display_mode_t display_mode = DISPLAY_SIMPLE;
+int terminal_width = 80;
+
+
 // File list structure
 typedef struct {
     char **names;
@@ -270,17 +282,28 @@ int main(int argc, char *argv[]) {
     // Initialize terminal width
     terminal_width = get_terminal_width();
     
+
     // Parse command-line options
-    while ((opt = getopt(argc, argv, "l")) != -1) {
+    while ((opt = getopt(argc, argv, "lx")) != -1) {
         switch (opt) {
             case 'l':
-                long_format = 1;
+                display_mode = DISPLAY_LONG;
+                break;
+            case 'x':
+                display_mode = DISPLAY_HORIZONTAL;
                 break;
             default:
-                fprintf(stderr, "Usage: %s [-l] [directory...]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-l] [-x] [directory...]\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
+    
+    // Note: -l takes precedence over -x if both are specified
+    // This matches standard ls behavior
+    
+
+
+
     
     // Rest of main function remains the same...
     // Process directories
