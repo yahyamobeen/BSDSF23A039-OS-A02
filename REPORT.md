@@ -195,10 +195,67 @@ Decision Flow:
 text
 
 
-## Next Steps
 
-Now you have successfully implemented:
-- ✅ Feature 1: Project Setup
-- ✅ Feature 2: Long Listing Format (-l)
-- ✅ Feature 3: Vertical Column Display
-- ✅ Feature 4: Horizontal Column Display (-x)
+## Feature-5: Alphabetical Sort (v1.4.0)
+
+### Q1: Why read all directory entries into memory before sorting?
+
+**Necessity of Reading All Entries First:**
+
+1. **Sorting Requirement**: Sorting algorithms need access to all elements to determine their relative order
+2. **Directory Stream Limitation**: `readdir()` provides entries in filesystem order (not alphabetical)
+3. **Display Consistency**: All display modes (vertical, horizontal, long) need the same sorted order
+4. **Performance**: Single pass through directory, then efficient sorting
+
+**Potential Drawbacks for Large Directories:**
+
+1. **Memory Usage**: Storing millions of filenames can consume significant RAM
+2. **Startup Delay**: Users must wait for entire directory to be read before seeing any output
+3. **Scalability Issues**: Very large directories might exceed available memory
+
+**Mitigation Strategies:**
+- **Lazy Loading**: Could implement pagination for huge directories
+- **External Sorting**: For extremely large directories, use disk-based sorting
+- **Progress Indication**: Show progress while reading large directories
+
+### Q2: qsort() Comparison Function
+
+**Purpose:**
+The comparison function tells `qsort()` how to compare two elements in the array to determine their sort order.
+
+**Function Signature:**
+```c
+int compare_strings(const void *a, const void *b);
+
+How It Works:
+
+    *void Parameters**: qsort() passes generic pointers since it doesn't know the data type
+
+    Type Casting: We cast to const char** because our array contains char* pointers
+
+    String Comparison: Use strcmp() to compare the actual strings
+
+    Return Values:
+
+        Negative: a comes before b
+
+        Zero: a equals b
+
+        Positive: a comes after b
+
+Why const void Arguments:*
+
+    Generic Design: qsort() works with any data type (ints, structs, strings, etc.)
+
+    Type Safety: Forces explicit casting, making type handling deliberate
+
+    Standard Compliance: Follows C library standards for callback functions
+
+Example Implementation:
+c
+
+int compare_strings(const void *a, const void *b) {
+    const char *str1 = *(const char **)a;  // Cast and dereference
+    const char *str2 = *(const char **)b;  // Cast and dereference  
+    return strcmp(str1, str2);             // Compare strings
+}
