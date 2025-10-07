@@ -93,6 +93,51 @@ void do_ls(const char *dir);
 void get_permissions(mode_t mode, char *str);
 void print_long_format(const char *dirname, const char *filename);
 
+
+
+/**
+ * Calculate column layout
+ */
+void calculate_column_layout(file_list_t *list, int *cols, int *rows) {
+    if (list->count == 0) {
+        *cols = *rows = 0;
+        return;
+    }
+    
+    int col_width = list->max_name_len + 2; // Name + spacing
+    
+    // Calculate maximum possible columns
+    *cols = terminal_width / col_width;
+    if (*cols == 0) *cols = 1; // At least 1 column
+    
+    // Calculate rows needed
+    *rows = (list->count + *cols - 1) / *cols; // Ceiling division
+}
+
+/**
+ * Print files in vertical columns (down then across)
+ */
+void print_vertical_columns(file_list_t *list) {
+    int cols, rows;
+    calculate_column_layout(list, &cols, &rows);
+    
+    int col_width = list->max_name_len + 2;
+    
+    // Print row by row, column by column
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            int index = r + c * rows;
+            if (index < list->count) {
+                printf("%-*s", col_width, list->names[index]);
+            }
+        }
+        printf("\n");
+    }
+}
+
+
+
+
 /**
  * Convert file mode to permission string (e.g., "-rwxr-xr-x")
  */
