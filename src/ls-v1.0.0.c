@@ -61,6 +61,48 @@ void print_vertical_columns(file_list_t *list);
 void print_horizontal_columns(file_list_t *list);
 
 
+
+/**
+ * Determine color based on file type and permissions
+ */
+const char *get_file_color(const char *filename, mode_t mode) {
+    // Check if it's a directory
+    if (S_ISDIR(mode)) {
+        return COLOR_BLUE;
+    }
+    
+    // Check if it's a symbolic link
+    if (S_ISLNK(mode)) {
+        return COLOR_MAGENTA;
+    }
+    
+    // Check if it's a character/block device, FIFO, or socket
+    if (S_ISCHR(mode) || S_ISBLK(mode) || S_ISFIFO(mode) || S_ISSOCK(mode)) {
+        return COLOR_CYAN;
+    }
+    
+    // Check if it's executable (any execute permission bit set)
+    if (mode & (S_IXUSR | S_IXGRP | S_IXOTH)) {
+        return COLOR_GREEN;
+    }
+    
+    // Check for archive files by extension
+    const char *ext = strrchr(filename, '.');
+    if (ext != NULL) {
+        if (strcmp(ext, ".tar") == 0 || strcmp(ext, ".gz") == 0 || 
+            strcmp(ext, ".zip") == 0 || strcmp(ext, ".bz2") == 0 ||
+            strcmp(ext, ".xz") == 0 || strcmp(ext, ".tgz") == 0 ||
+            strcmp(ext, ".deb") == 0 || strcmp(ext, ".rpm") == 0) {
+            return COLOR_RED;
+        }
+    }
+    
+    // Default color for regular files
+    return COLOR_YELLOW;
+}
+
+
+
 /**
  * Comparison function for qsort (alphabetical order)
  */
