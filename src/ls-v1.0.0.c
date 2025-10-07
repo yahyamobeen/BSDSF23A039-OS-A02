@@ -1,6 +1,6 @@
 /*
-* Programming Assignment 02: ls v1.3.0
-* Complete Long Listing Format with Column Display
+* Programming Assignment 02: ls v1.5.0
+* Complete Long Listing Format with Column Display and Colors
 * Usage:
 *       $ ./bin/ls 
 *       $ ./bin/ls -l
@@ -20,6 +20,9 @@
 #include <time.h>
 #include <getopt.h>
 #include <sys/ioctl.h>
+
+extern int errno;
+
 // ANSI color codes for file types
 #define COLOR_RESET   "\033[0m"
 #define COLOR_BLUE    "\033[1;34m"    // Directories
@@ -28,7 +31,6 @@
 #define COLOR_MAGENTA "\033[1;35m"    // Symbolic links
 #define COLOR_CYAN    "\033[1;36m"    // Special files
 #define COLOR_YELLOW  "\033[1;33m"    // Regular files (default)
-extern int errno;
 
 // Display modes
 typedef enum {
@@ -57,10 +59,119 @@ void file_list_add(file_list_t *list, const char *name);
 void file_list_free(file_list_t *list);
 int get_terminal_width();
 void calculate_column_layout(file_list_t *list, int *cols, int *rows);
-void print_vertical_columns(file_list_t *list);
-void print_horizontal_columns(file_list_t *list);
+void print_vertical_columns(file_list_t *list, const char *dir);
+void print_horizontal_columns(file_list_t *list, const char *dir);
+int compare_strings(const void *a, const void *b);
+const char *get_file_color(const char *filename, mode_t mode);
 
+/**
+ * Get terminal width using termios
+ */
+int get_terminal_width() {
+    struct winsize w;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
+        return w.ws_col;
+    }
+    
+    // Fallback: environment variable
+    char *columns = getenv("COLUMNS");
+    if (columns != NULL) {
+        int width = atoi(columns);
+        if (width > 0) return width;
+    }
+    
+    // Final fallback
+    return 80;
+}
 
+/**
+ * Create a new file list
+ */
+file_list_t *file_list_create() {
+    file_list_t *list = malloc(sizeof(file_list_t));
+    list->names = NULL;
+    list->count = 0;
+    list->max_name_len = 0;
+    return list;
+}
+
+/**
+ * Add filename to list with error checking
+ */
+void file_list_add(file_list_t *list, const char *name) {
+    // Reallocate memory for names array
+    char **new_names = realloc(list->names, (list->count + 1) * sizeof(char *));
+    if (new_names == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        return;
+    }
+    list->names = new_names;
+    
+    // Duplicate the string
+    list->names[list->count] = strdup(name);
+    if (list->names[list->count] == NULL) {
+        fprintf(stderr, "Memory allocation failed for filename\n");
+        return;
+    }
+    
+    int len = strlen(name);
+    if (len > list->max_name_len) {
+        list->max_name_len = len;
+    }
+    
+    list->count++;
+}
+
+/**
+ * Free file list memory
+ */
+void file_list_free(file_list_t *list) {
+    for (int i = 0; i < list->count; i++) {
+        free(list->names[i]);
+    }
+    free(list->names);
+    free(list);
+}
+
+/**
+ * Comparison function for qsort (alphabetical order)
+ */
+int compare_strings(const void *a, const void *b) {
+    const char *str1 = *(const char **)a;
+    const char *str2 = *(const char **)b;
+    return strcmp(str1, str2);
+}
+
+/**
+ * Convert file mode to permission string (e.g., "-rwxr-xr-x")
+ */
+void get_permissions(mode_t mode, char *str) {
+    // File type
+    if (S_ISDIR(mode))       str[0] = 'd';
+    else if (S_ISLNK(mode))  str[0] = 'l';
+    else if (S_ISCHR(mode))  str[0] = 'c';
+    else if (S_ISBLK(mode))  str[0] = 'b';
+    else if (S_ISFIFO(mode)) str[0] = 'p';
+    else if (S_ISSOCK(mode)) str[0] = 's';
+    else                     str[0] = '-';
+    
+    // Owner permissions
+    str[1] = (mode & S_IRUSR) ? 'r' : '-';
+    str[2] = (mode & S_IWUSR) ? 'w' : '-';
+    str[3] = (mode & S_IXUSR) ? 'x' : '-';
+    
+    // Group permissions
+    str[4] = (mode & S_IRGRP) ? 'r' : '-';
+    str[5] = (mode & S_IWGRP) ? 'w' : '-';
+    str[6] = (mode & S_IXGRP) ? 'x' : '-';
+    
+    // Others permissions
+    str[7] = (mode & S_IROTH) ? 'r' : '-';
+    str[8] = (mode & S_IWOTH) ? 'w' : '-';
+    str[9] = (mode & S_IXOTH) ? 'x' : '-';
+    
+    str[10] = '\0';
+}
 
 /**
  * Determine color based on file type and permissions
@@ -99,105 +210,6 @@ const char *get_file_color(const char *filename, mode_t mode) {
     
     // Default color for regular files
     return COLOR_YELLOW;
-}
-
-
-
-/**
- * Comparison function for qsort (alphabetical order)
- */
-int compare_strings(const void *a, const void *b) {
-    const char *str1 = *(const char **)a;
-    const char *str2 = *(const char **)b;
-    return strcmp(str1, str2);
-}
-
-/**
- * Get terminal width using termios
- */
-int get_terminal_width() {
-    struct winsize w;
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
-        return w.ws_col;
-    }
-    
-    // Fallback: environment variable
-    char *columns = getenv("COLUMNS");
-    if (columns != NULL) {
-        int width = atoi(columns);
-        if (width > 0) return width;
-    }
-    
-    // Final fallback
-    return 80;
-}
-
-/**
- * Create a new file list
- */
-file_list_t *file_list_create() {
-    file_list_t *list = malloc(sizeof(file_list_t));
-    list->names = NULL;
-    list->count = 0;
-    list->max_name_len = 0;
-    return list;
-}
-
-/**
- * Add filename to list
- */
-void file_list_add(file_list_t *list, const char *name) {
-    list->names = realloc(list->names, (list->count + 1) * sizeof(char *));
-    list->names[list->count] = strdup(name);
-    
-    int len = strlen(name);
-    if (len > list->max_name_len) {
-        list->max_name_len = len;
-    }
-    
-    list->count++;
-}
-
-/**
- * Free file list memory
- */
-void file_list_free(file_list_t *list) {
-    for (int i = 0; i < list->count; i++) {
-        free(list->names[i]);
-    }
-    free(list->names);
-    free(list);
-}
-
-/**
- * Convert file mode to permission string (e.g., "-rwxr-xr-x")
- */
-void get_permissions(mode_t mode, char *str) {
-    // File type
-    if (S_ISDIR(mode))       str[0] = 'd';
-    else if (S_ISLNK(mode))  str[0] = 'l';
-    else if (S_ISCHR(mode))  str[0] = 'c';
-    else if (S_ISBLK(mode))  str[0] = 'b';
-    else if (S_ISFIFO(mode)) str[0] = 'p';
-    else if (S_ISSOCK(mode)) str[0] = 's';
-    else                     str[0] = '-';
-    
-    // Owner permissions
-    str[1] = (mode & S_IRUSR) ? 'r' : '-';
-    str[2] = (mode & S_IWUSR) ? 'w' : '-';
-    str[3] = (mode & S_IXUSR) ? 'x' : '-';
-    
-    // Group permissions
-    str[4] = (mode & S_IRGRP) ? 'r' : '-';
-    str[5] = (mode & S_IWGRP) ? 'w' : '-';
-    str[6] = (mode & S_IXGRP) ? 'x' : '-';
-    
-    // Others permissions
-    str[7] = (mode & S_IROTH) ? 'r' : '-';
-    str[8] = (mode & S_IWOTH) ? 'w' : '-';
-    str[9] = (mode & S_IXOTH) ? 'x' : '-';
-    
-    str[10] = '\0';
 }
 
 /**
@@ -259,12 +271,8 @@ void calculate_column_layout(file_list_t *list, int *cols, int *rows) {
     *rows = (list->count + *cols - 1) / *cols; // Ceiling division
 }
 
-
-
-
-
 /**
- * Print files in vertical columns with colors (down then across)
+ * Print files in vertical columns (down then across) with colors
  */
 void print_vertical_columns(file_list_t *list, const char *dir) {
     int cols, rows;
@@ -295,7 +303,7 @@ void print_vertical_columns(file_list_t *list, const char *dir) {
 }
 
 /**
- * Print files in horizontal columns with colors(across then down)
+ * Print files in horizontal columns (across then down) with colors
  */
 void print_horizontal_columns(file_list_t *list, const char *dir) {
     if (list->count == 0) {
@@ -345,11 +353,6 @@ void print_horizontal_columns(file_list_t *list, const char *dir) {
     }
 }
 
-
-
-
-
-
 /**
  * List directory contents
  */
@@ -384,7 +387,7 @@ void do_ls(const char *dir) {
     if (display_mode == DISPLAY_LONG) {
         // Print each file in long format from sorted list
         for (int i = 0; i < file_list->count; i++) {
-            print_long_format(dir, file_list->names[i]);
+            print_long_format(dir, file_list->count[i]);
         }
     } else if (file_list->count > 0) {
         // Use column display for non-long formats
@@ -409,9 +412,6 @@ void do_ls(const char *dir) {
     
     closedir(dp);
 }
-
-
-
 
 /**
  * Main function
