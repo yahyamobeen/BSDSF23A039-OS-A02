@@ -290,7 +290,7 @@ void do_ls(const char *dir) {
         if (entry->d_name[0] == '.')
             continue;
         
-        if (long_format) {
+        if (display_mode == DISPLAY_LONG) {
             // Print in long format immediately
             print_long_format(dir, entry->d_name);
         } else {
@@ -299,9 +299,19 @@ void do_ls(const char *dir) {
         }
     }
     
-    // Print in column format if not long format
-    if (!long_format && file_list->count > 0) {
-        print_vertical_columns(file_list);
+    // Handle different display modes for non-long format
+    if (display_mode != DISPLAY_LONG && file_list->count > 0) {
+        switch (display_mode) {
+            case DISPLAY_SIMPLE:
+                print_vertical_columns(file_list);
+                break;
+            case DISPLAY_HORIZONTAL:
+                print_horizontal_columns(file_list);
+                break;
+            default:
+                print_vertical_columns(file_list); // Fallback
+                break;
+        }
     }
     
     file_list_free(file_list);
