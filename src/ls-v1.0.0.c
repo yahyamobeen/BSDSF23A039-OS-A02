@@ -259,10 +259,14 @@ void calculate_column_layout(file_list_t *list, int *cols, int *rows) {
     *rows = (list->count + *cols - 1) / *cols; // Ceiling division
 }
 
+
+
+
+
 /**
- * Print files in vertical columns (down then across)
+ * Print files in vertical columns with colors (down then across)
  */
-void print_vertical_columns(file_list_t *list) {
+void print_vertical_columns(file_list_t *list, const char *dir) {
     int cols, rows;
     calculate_column_layout(list, &cols, &rows);
     
@@ -273,7 +277,17 @@ void print_vertical_columns(file_list_t *list) {
         for (int c = 0; c < cols; c++) {
             int index = r + c * rows;
             if (index < list->count) {
-                printf("%-*s", col_width, list->names[index]);
+                // Get file info for color
+                struct stat st;
+                char path[1024];
+                snprintf(path, sizeof(path), "%s/%s", dir, list->names[index]);
+                
+                if (lstat(path, &st) == 0) {
+                    const char *color = get_file_color(list->names[index], st.st_mode);
+                    printf("%s%-*s%s", color, col_width, list->names[index], COLOR_RESET);
+                } else {
+                    printf("%-*s", col_width, list->names[index]);
+                }
             }
         }
         printf("\n");
@@ -281,14 +295,14 @@ void print_vertical_columns(file_list_t *list) {
 }
 
 /**
- * Print files in horizontal columns (across then down)
+ * Print files in horizontal columns with colors(across then down)
  */
-void print_horizontal_columns(file_list_t *list) {
+void print_horizontal_columns(file_list_t *list, const char *dir) {
     if (list->count == 0) {
         return;
     }
     
-    int col_width = list->max_name_len + 2; // Name + spacing
+    int col_width = list->max_name_len + 2;
     int max_cols = terminal_width / col_width;
     if (max_cols == 0) max_cols = 1;
     
@@ -296,8 +310,20 @@ void print_horizontal_columns(file_list_t *list) {
     int current_width = 0;
     
     for (int i = 0; i < list->count; i++) {
+        // Get file info for color
+        struct stat st;
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/%s", dir, list->names[i]);
+        
+        const char *color = COLOR_YELLOW; // Default
+        const char *reset = COLOR_RESET;
+        
+        if (lstat(path, &st) == 0) {
+            color = get_file_color(list->names[i], st.st_mode);
+        }
+        
         int name_len = strlen(list->names[i]);
-        int needed_width = name_len + 2; // Name plus spacing
+        int needed_width = name_len + 2;
         
         // Check if we need to wrap to next line
         if (current_col > 0 && (current_width + needed_width) > terminal_width) {
@@ -306,8 +332,8 @@ void print_horizontal_columns(file_list_t *list) {
             current_width = 0;
         }
         
-        // Print the filename with padding
-        printf("%-*s", col_width, list->names[i]);
+        // Print the filename with color and padding
+        printf("%s%-*s%s", color, col_width, list->names[i], reset);
         
         current_col++;
         current_width += col_width;
