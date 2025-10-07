@@ -119,3 +119,86 @@ file3 file6 file9
 
 **Our Implementation:**
 We use `ioctl(TIOCGWINSZ)` to get terminal dimensions, falling back to 80 columns if unavailable.
+
+## Feature-4: Horizontal Column Display (v1.3.0)
+
+### Q1: Compare implementation complexity of vertical vs horizontal printing
+
+**Vertical (Down Then Across) Printing:**
+- **More Complex**: Requires significant pre-calculation
+- **Two-pass process**: First read all files, then calculate layout, then print
+- **Index calculation**: Need complex index math: `index = row + column * total_rows`
+- **Memory intensive**: Must store all filenames in memory
+- **Layout dependency**: Entire layout depends on longest filename and terminal width
+
+**Horizontal (Across Then Down) Printing:**
+- **Simpler**: Single-pass, stream-oriented approach
+- **Real-time decisions**: Can print as we go, wrapping when needed
+- **Straightforward logic**: Simple counter for current position
+- **Less memory**: Could theoretically print without storing all names
+- **Dynamic wrapping**: Natural text wrapping behavior
+
+**Why Vertical Needs More Pre-calculation:**
+Vertical layout requires knowing ALL filenames and the LONGEST filename before starting to print, because the entire column structure depends on these values.
+
+### Q2: Strategy for managing different display modes
+
+**Our Implementation Strategy:**
+
+1. **Enum for Display Modes:**
+   ```c
+   typedef enum {
+       DISPLAY_SIMPLE,     // Default vertical
+       DISPLAY_LONG,       // -l option  
+       DISPLAY_HORIZONTAL  // -x option
+   } display_mode_t;
+
+
+Global State Variable:
+c
+
+display_mode_t display_mode = DISPLAY_SIMPLE;
+
+Option Parsing Logic:
+
+    -l sets DISPLAY_LONG
+
+    -x sets DISPLAY_HORIZONTAL
+
+    Default remains DISPLAY_SIMPLE
+
+    -l takes precedence (matches standard ls)
+
+Branching in do_ls():
+c
+
+if (display_mode == DISPLAY_LONG) {
+    // Print immediately in long format
+} else {
+    // Collect files, then choose display function
+    switch (display_mode) {
+        case DISPLAY_SIMPLE: print_vertical_columns(); break;
+        case DISPLAY_HORIZONTAL: print_horizontal_columns(); break;
+    }
+}
+
+Decision Flow:
+
+    Parse command-line options → Set display_mode
+
+    Read directory entries
+
+    If LONG mode → Print each file immediately with metadata
+
+    Otherwise → Collect all names, then call appropriate column function
+
+text
+
+
+## Next Steps
+
+Now you have successfully implemented:
+- ✅ Feature 1: Project Setup
+- ✅ Feature 2: Long Listing Format (-l)
+- ✅ Feature 3: Vertical Column Display
+- ✅ Feature 4: Horizontal Column Display (-x)
