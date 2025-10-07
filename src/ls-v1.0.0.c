@@ -64,6 +64,98 @@ void print_horizontal_columns(file_list_t *list, const char *dir);
 int compare_strings(const void *a, const void *b);
 const char *get_file_color(const char *filename, mode_t mode);
 
+
+
+/**
+ * Recursive directory listing function
+ */
+void do_ls_recursive(const char *dir) {
+    struct dirent *entry;
+    DIR *dp = opendir(dir);
+    
+    if (dp == NULL) {
+        fprintf(stderr, "Cannot open directory: %s\n", dir);
+        return;
+    }
+    
+    // Print directory header (standard ls -R behavior)
+    printf("\n%s:\n", dir);
+    
+    file_list_t *file_list = file_list_create();
+    file_list_t *dir_list = file_list_create();  // Separate list for subdirectories
+    errno = 0;
+    
+    // Read all directory entries
+    while ((entry = readdir(dp)) != NULL) {
+        // Skip hidden files and . / .. entries for recursion
+        if (entry->d_name[0] == '.')
+            continue;
+        
+        // Add to main file list for display
+        file_list_add(file_list, entry->d_name);
+        
+        // Check if it's a directory for recursion
+        if (recursive_flag) {
+            char full_path[1024];
+            snprintf(full_path, sizeof(full_path), "%s/%s", dir, entry->d_name);
+            
+            struct stat st;
+            if (lstat(full_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+                file_list_add(dir_list, entry->d_name);
+            }
+        }
+    }
+    
+    // Sort the file list alphabetically
+    if (file_list->count > 0) {
+        qsort(file_list->names, file_list->count, sizeof(char *), compare_strings);
+    }
+    
+    // Handle different display modes
+    if (display_mode == DISPLAY_LONG) {
+        // Print each file in long format from sorted list
+        for (int i = 0; i < file_list->count; i++) {
+            print_long_format(dir, file_list->names[i]);
+        }
+    } else if (file_list->count > 0) {
+        // Use column display for non-long formats
+        switch (display_mode) {
+            case DISPLAY_SIMPLE:
+                print_vertical_columns(file_list, dir);
+                break;
+            case DISPLAY_HORIZONTAL:
+                print_horizontal_columns(file_list, dir);
+                break;
+            default:
+                print_vertical_columns(file_list, dir); // Fallback
+                break;
+        }
+    }
+    
+    // Recursively process subdirectories
+    if (recursive_flag && dir_list->count > 0) {
+        // Sort directory list
+        qsort(dir_list->names, dir_list->count, sizeof(char *), compare_strings);
+        
+        for (int i = 0; i < dir_list->count; i++) {
+            char subdir_path[1024];
+            snprintf(subdir_path, sizeof(subdir_path), "%s/%s", dir, dir_list->names[i]);
+            do_ls_recursive(subdir_path);
+        }
+    }
+    
+    file_list_free(file_list);
+    file_list_free(dir_list);
+    
+    if (errno != 0) {
+        perror("readdir failed");
+    }
+    
+    closedir(dp);
+}
+
+
+
 /**
  * Get terminal width using termios
  */
