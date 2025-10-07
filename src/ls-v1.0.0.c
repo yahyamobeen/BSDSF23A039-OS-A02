@@ -18,7 +18,71 @@
 #include <grp.h>
 #include <time.h>
 #include <getopt.h>
+#include <termios.h>
+#include <sys/ioctl.h>
 
+// File list structure
+typedef struct {
+    char **names;
+    int count;
+    int max_name_len;
+} file_list_t;
+
+/**
+ * Create a new file list
+ */
+file_list_t *file_list_create() {
+    file_list_t *list = malloc(sizeof(file_list_t));
+    list->names = NULL;
+    list->count = 0;
+    list->max_name_len = 0;
+    return list;
+}
+
+/**
+ * Add filename to list
+ */
+void file_list_add(file_list_t *list, const char *name) {
+    list->names = realloc(list->names, (list->count + 1) * sizeof(char *));
+    list->names[list->count] = strdup(name);
+    
+    int len = strlen(name);
+    if (len > list->max_name_len) {
+        list->max_name_len = len;
+    }
+    
+    list->count++;
+}
+
+/**
+ * Free file list memory
+ */
+void file_list_free(file_list_t *list) {
+    for (int i = 0; i < list->count; i++) {
+        free(list->names[i]);
+    }
+    free(list->names);
+    free(list);
+}
+
+
+
+
+
+
+// Global variables for display
+int terminal_width = 80;
+
+/**
+ * Get terminal width using termios (alternative to ioctl)
+ */
+int get_terminal_width() {
+    struct winsize w;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
+        return w.ws_col;
+    }
+    return 80; // Fallback to 80 columns
+}
 extern int errno;
 
 // Global flag for long format
